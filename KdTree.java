@@ -34,7 +34,7 @@ public class KdTree {
 
 	// is the set empty?
 	public boolean isEmpty() {
-		return root.p == null;
+		return root == null;
 	}
 
 	// number of points in the set 
@@ -56,7 +56,7 @@ public class KdTree {
 	public void insert(Point2D p) {
 		if (p == null) throw new java.lang.NullPointerException();
 
-		root = insert(root, p, HORIZONTAL);
+		root = insert(root, p, VERTICAL);
 	}
 	
 	private Node insert(Node node, Point2D point, boolean direction) {
@@ -104,6 +104,16 @@ public class KdTree {
 
 	// draw all points to standard draw 
 	public void draw() {
+		draw(root, VERTICAL);
+	}
+
+	private void draw(Node node, boolean direction) {
+		if (node == null) return;
+
+		draw(node.lb, !direction);
+		node.p.draw();
+		node.rect.draw();
+		draw(node.rt, !direction);
 	}
 
 	// all points that are inside the rectangle 

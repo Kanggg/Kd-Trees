@@ -5,7 +5,6 @@ import edu.princeton.cs.algs4.Queue;
 import java.util.Iterator;
 import java.util.TreeSet;
 
-
 public class PointSET {
 	private TreeSet<Point2D> set;
 

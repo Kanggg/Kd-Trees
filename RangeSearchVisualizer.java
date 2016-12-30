@@ -99,5 +99,6 @@ public class RangeSearchVisualizer {
             StdDraw.show();
             StdDraw.pause(40);
         }
+        
     }
 }

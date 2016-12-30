@@ -1,14 +1,17 @@
 import edu.princeton.cs.algs4.Point2D;
 import edu.princeton.cs.algs4.RectHV;
+import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.Queue;
 
 public class KdTree {
 	private Node root;
 	private static boolean HORIZONTAL = true;
 	private static boolean VERTICAL = false;
+	private double min;
 
 	public KdTree() {
 		root = null;
+		min = Double.MAX_VALUE;
 	}
 
 	private static class Node {
@@ -16,19 +19,20 @@ public class KdTree {
 		private RectHV rect;
 		private Node lb;
 		private Node rt;
+		private int size;
 
 		private Node() {
 			p = null;
 			rect = null;
 			lb = null;
 			rt = null;
+			size = 1;
 		}
 
 		private Node(Point2D point, RectHV r) {
+			this();
 			p = point;
 			rect = r;
-			lb = null;
-			rt = null;
 		}
 	}
 
@@ -39,76 +43,64 @@ public class KdTree {
 
 	// number of points in the set 
 	public int size() {
-		return size(root);
-	}
-
-	private int size (Node node) {
-		if (node.p == null) return 0;
-
-		int ret = 1;		
-		if (node.lb != null) ret += size(node.lb);
-		if (node.rt != null) ret += size(node.rt);
-
-		return ret;
+		return (root == null) ? 0 : root.size;
 	}
 
 	// add the point to the set (if it is not already in the set)
 	public void insert(Point2D p) {
 		if (p == null) throw new java.lang.NullPointerException();
-		
+
 		if (contains(p)) return;
 
 		root = insert(root, new RectHV(0, 0, 1, 1), p, VERTICAL);
 	}
 
 	private Node insert(Node node, RectHV r, Point2D point, boolean direction) {
-		System.out.println("point x = "+point.x()+ " y = "+point.y() + " direction "+direction);
-		if (node == null) {
-			return new Node(point, r);
-		}
+		if (node == null) return new Node(point, r);
 
-		double cmp = !direction ? (point.x() - node.p.x()) : (point.y() - node.p.y());
+		double cmp = direction ? (point.x() - node.p.x()) : (node.p.y() - point.y());
 		RectHV next = null;
 		if (cmp < 0) {
-			if (direction)
+			if (!direction)
 				next = new RectHV(node.rect.xmin(), node.p.y(), node.rect.xmax(), node.rect.ymax());
 			else
 				next = new RectHV(node.rect.xmin(), node.rect.ymin(), node.p.x(), node.rect.ymax());
-			System.out.println("insert left");
 			node.lb = insert(node.lb, next, point, !direction);
 		} else {
-			if (direction)
+			if (!direction)
 				next = new RectHV(node.rect.xmin(), node.rect.ymin(), node.rect.xmax(), node.p.y());
 			else
 				next = new RectHV(node.p.x(), node.rect.ymin(), node.rect.xmax(), node.rect.ymax());
-			System.out.println("insert right");
 			node.rt = insert(node.rt, next, point, !direction);
 		}
 
+		node.size = ((node.lb == null) ? 0 : node.lb.size) + ((node.rt == null) ? 0 : node.rt.size) + 1;
 		return node;
 	}
 
 	// does the set contain point p? 
 	public boolean contains(Point2D p) {
 		if (p == null) throw new java.lang.NullPointerException();
-
-		if (contains(root, p) == null)
-			return false;
-
-		return true;
+		
+		return contains(root, p, VERTICAL);
 	}
 
-	private Node contains(Node node, Point2D point) {
-		if (node == null) return null;
+	private boolean contains(Node node, Point2D point, boolean direction) {
+		if (node == null) return false;
 
-		int cmp = node.p.compareTo(point);
+		if (point.equals(node.p)) return true;
+		
+		double cmp = direction ? (point.x() - node.p.x()) : (node.p.y() - point.y());
 
-		if (cmp < 0)
-			return contains(node.lb, point);
-		else if (cmp > 0)
-			return contains(node.rt, point);
+		if (cmp < 0) {
+			if (contains(node.lb, point, !direction))
+				return true;
+		} else {
+			if (contains(node.rt, point, !direction))
+				return true;
+		}
 
-		return node;
+		return false;
 	}
 
 	// draw all points to standard draw 
@@ -150,24 +142,63 @@ public class KdTree {
 	public Point2D nearest(Point2D p) {
 		if (p == null) throw new java.lang.NullPointerException();
 
-		double max = Double.MAX_VALUE;
+		min = Double.MAX_VALUE;
 		Point2D ret = null;
-		findNearest(root, p, ret, max);
+		ret = findNearest(root, p);
 		return ret;
 	}
 
-	private void findNearest(Node node, Point2D target, Point2D nearest, double max) {
-		if (node == null) return;
+	private Point2D findNearest(Node node, Point2D target) {
+		if (node == null) return null;
+
+		if (!node.rect.contains(target) && node.rect.distanceSquaredTo(target) > min)
+			return null;
+		
+		Point2D ret = null, left = null, right = null;
 
 		double dist = node.p.distanceSquaredTo(target);
-		if (dist < max) {
-			max = dist;
-			nearest = node.p;
+		if (dist < min) {
+			min = dist;
+			ret = node.p;
 		}
 
-		if (node.rect.contains(target))
-			findNearest(node.lb, target, nearest, max);
-		else
-			findNearest(node.rt, target, nearest, max);
+		left = findNearest(node.lb, target);
+		if (left != null) ret = left;
+		right = findNearest(node.rt, target);
+		if (right != null) ret = right;
+		
+		return ret;
+
+	}
+
+	public static void main(String[] args) {
+		Point2D p1 = new Point2D(0.7, 0.5);
+		Point2D p2 = new Point2D(0.2, 0.5);
+		Point2D p3 = new Point2D(0.1, 0.4);
+
+		StdDraw.setPenRadius(0.01);
+		StdDraw.setPenColor(StdDraw.BLUE);
+
+		RectHV r = new RectHV(0.05, 0.1, 0.15, 0.45);
+
+
+		Iterable<Point2D> range = new Queue<Point2D> ();
+		KdTree kdtree = new KdTree();
+		kdtree.insert(p1);
+		kdtree.insert(p2);
+		kdtree.insert(p3);
+		StdDraw.setPenRadius(0.02);
+		StdDraw.setPenColor(StdDraw.RED);
+		p1.draw();
+		p2.draw();
+		p3.draw();
+		System.out.println("size = "+kdtree.size());
+		StdDraw.setPenRadius(0.01);
+		StdDraw.setPenColor(StdDraw.BLACK);
+		r.draw();
+		range = kdtree.range(r);
+		for (Point2D p : range) {
+			System.out.println(p);
+		}
 	}
 }
